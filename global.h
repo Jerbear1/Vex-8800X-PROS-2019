@@ -1,10 +1,10 @@
 #include "main.h"
 #define _PROS_GLOBAL_H_
 
-pros::Motor leftFrontMotor(1);
-pros::Motor rightFrontMotor(2);
-pros::Motor leftBackMotor(3);
-pros::Motor rightBackMotor(4);
+pros::Motor leftFrontMotor(2);
+pros::Motor rightFrontMotor(1);
+pros::Motor leftBackMotor(4);
+pros::Motor rightBackMotor(3);
 pros::Motor intakeMotor(5);
 pros::Motor CATapultMotor(6);
 pros::Motor liftMotor(7);
