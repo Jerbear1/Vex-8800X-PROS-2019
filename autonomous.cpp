@@ -1,4 +1,5 @@
 #include "main.h"
+#include "global.h"
 
 /**
  * Runs the user autonomous code. This function will be started in its own task
@@ -11,13 +12,4 @@
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
-void autonomous() {
-  pros::Motor backRightDrive(10);
-	pros::Motor frontRightDrive(2);
-	pros::Motor frontLeftDrive(1);
-	pros::Motor backLeftDrive(9);
-	pros::Motor intake(5);
-  pros::Motor shooter(4);
-
-
-}
+void autonomous() {}

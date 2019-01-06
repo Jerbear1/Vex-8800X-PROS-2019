@@ -1,4 +1,5 @@
 #include "main.h"
+#include "global.h"
 
 /**
  * Runs the operator control code. This function will be started in its own task
@@ -16,49 +17,129 @@
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
 	pros::Controller partner(pros::E_CONTROLLER_PARTNER);
-	pros::Motor backRightDrive(3, true);
-	pros::Motor frontRightDrive(4, true);
-	pros::Motor frontLeftDrive(2);
-	pros::Motor backLeftDrive(1);
-	pros::Motor intake(5);
-	pros::Motor shooter(6, true);
-	pros::Motor lift(7);
-	pros::Motor pancake(8);
+
+	bool intake = false;
+	int capflip = 0;
+
+	float target = 0;
+	float current = 0;
+	float error = 0;
+	float lastError = 0;
+
+	float P = 0;
+	float I = 0;
+	float D = 0;
+
+	float integralLimit = 0;
+	float integralZone = 0;
+
+	float kp = 0;
+	float ki = 0;
+	float kd = 0;
+	// tuning
+
 	while (true) {
-		/*pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
-		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
-		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);*/
-		int left = master.get_analog(ANALOG_LEFT_Y);
-		int right = master.get_analog(ANALOG_RIGHT_Y);
 
-		bool intakeyswitch = false;
-		backRightDrive = right;
-		frontRightDrive = right;
-		backLeftDrive = left;
-		frontLeftDrive = left;
+		int steer = master.get_analog(ANALOG_LEFT_X);
+		int drive = master.get_analog(ANALOG_RIGHT_Y);
 
-			if(master.get_digital(DIGITAL_R1)){
-				intake = 127;
-			} else if(master.get_digital(DIGITAL_R2)){
-				intake = -127;
-			} else {
-				intake = 0;
-			}
+		bool intakeforwardm = master.get_digital(DIGITAL_R1);
+		bool intakebackwardm = master.get_digital(DIGITAL_R2);
+		bool intakeforwardp = partner.get_digital(DIGITAL_R1);
+		bool intakebackwardp = partner.get_digital(DIGITAL_R2);
+		bool intakestopp = partner.get_digital(DIGITAL_L2);
+		bool intakestoppLeaingEdge = partner.get_digital_new_press(DIGITAL_L2);
+		bool capfliptoggler = partner.get_digital_new_press(DIGITAL_L1);
+		bool liftLowPost = partner.get_digital(DIGITAL_UP);
+		bool liftHighpost = partner.get_digital(DIGITAL_LEFT);
+		bool liftGroundLevel = partner.get_digital(DIGITAL_DOWN);
 
-			if(partner.get_digital(DIGITAL_R1)){
-				lift = 127;
-			} else if(partner.get_digital(DIGITAL_R2)){
-				lift = -127;
-			} else {
-				lift = 0;
-			}
+// all of the variables and inputs
 
-		if(master.get_digital(DIGITAL_L1)){
-			shooter = 127;
-		} else {
-			shooter = 0;
+
+		leftBackMotor = leftFrontMotor = drive + steer;
+		rightBackMotor = rightFrontMotor = drive - steer;
+// arcade drive
+
+		if (intakestopp){
+			intakeMotor = 0;
+		}
+		else if (intakeforwardp){
+			intakeMotor = 127;
+		}
+		else if (intakebackwardp){
+			intakeMotor = -127;
+		}
+		if (intakeforwardm){
+			intakeMotor = 127;
+		}
+		else if (intakebackwardm){
+			intakeMotor = -127;
+
+		if ((intakestoppLeaingEdge && (intakeforwardm || intakebackwardm)) == true){
+			master.rumble(".");
+		}
+// roller intake controls
+
+		if(capfliptoggler && (capflip == 0)){
+			capflip = 1;
 		}
 
+		if(capflip == 1){
+			if(otherIntakePotentiometer.get_value() <= 1638){
+				otherIntakeMotor = 127;
+			}
+			else{
+				capflip = 2;
+			}
+		}
+		if(capflip == 2){
+			if(otherIntakePotentiometer.get_value() >= 50){
+				otherIntakeMotor = -127;
+			}
+			else{
+				capflip = 0;
+			}
+		}
+		if(capflip == 0)
+			otherIntakeMotor = 0;
+// capflipper controls
+
+	if(liftHighpost){
+		target = 1638;
+	}
+	if(liftLowPost){
+		target = 1200;
+	}
+	if(liftGroundLevel){
+		target = 5;
+	}
+
+	if(partner.get_digital_new_press(DIGITAL_UP) || partner.get_digital_new_press(DIGITAL_LEFT) || partner.get_digital_new_press(DIGITAL_DOWN)){
+		partner.rumble(".");
+	}
 		pros::delay(20);
+	}
+
+	while(true){
+		current = liftPotentiometer.get_value();
+		error = target - current;
+
+		P = error * kp;
+
+		if(fabs(error) <= integralZone){
+			I = I + (error * ki);
+			}
+			if(I >= integralLimit){
+				I = integralLimit;
+				}
+			if(I <= -(integralLimit)){
+				I = -(integralLimit);
+				}
+		D = kd * (lastError - error);
+
+		liftMotor = P + I + D;
+
+		lastError = error;
 	}
 }
